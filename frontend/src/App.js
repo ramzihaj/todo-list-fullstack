@@ -10,7 +10,7 @@ function App() {
 
   useEffect(() => {
     fetchTasks();
-    document.body.className = theme;  // Applique le thème
+    document.body.className = theme;  
   }, [theme]);
 
   const fetchTasks = async () => {
