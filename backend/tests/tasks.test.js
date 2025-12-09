@@ -1,22 +1,40 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 
-// Mock mongoose pour éviter connexion réelle
+// Mock mongoose global pour éviter toute connexion
 jest.mock('mongoose');
 
-const mockConnect = jest.fn();
-mongoose.connect = mockConnect;
+// Mock spécifique pour le modèle Task
+const mockTasks = [];  // Simulate DB in memory
+const mockTask = { text: 'Test', category: 'Travail' };  // Mock instance
 
-// Import app après mock
+// Mock mongoose.Schema et model
+const mockSchema = jest.fn().mockReturnValue({});  // Empty schema
+mongoose.Schema = jest.fn(() => mockSchema);
+const mockModel = jest.fn(() => ({
+  find: jest.fn().mockResolvedValue(mockTasks),  // GET: return empty or tasks
+  findByIdAndUpdate: jest.fn().mockResolvedValue(mockTask),  // PUT
+  findByIdAndDelete: jest.fn().mockResolvedValue({ deletedCount: 1 }),  // DELETE
+  prototype: {
+    save: jest.fn().mockResolvedValue(mockTask)  // POST: save returns task
+  }
+}));
+mongoose.model = mockModel;
+
+// Import app après mocks
 const app = require('../server');
 
 describe('Tasks API', () => {
   beforeAll(() => {
-    process.env.NODE_ENV = 'test';  // Active mode test
+    process.env.NODE_ENV = 'test';
   });
 
   afterAll(() => {
     delete process.env.NODE_ENV;
+  });
+
+  afterEach(() => {
+    mockTasks.length = 0;  // Clear "DB" after each test
   });
 
   it('should get empty tasks array', async () => {
@@ -32,5 +50,6 @@ describe('Tasks API', () => {
     expect(res.status).toBe(200);
     expect(res.body.text).toBe('Test tâche');
     expect(res.body.category).toBe('Travail');
+    expect(mockTasks.length).toBe(1);  // Verify "saved"
   });
 });
