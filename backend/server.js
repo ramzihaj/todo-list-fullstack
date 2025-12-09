@@ -43,3 +43,4 @@ app.delete('/tasks/:id', async (req, res) => {
 });
 
 app.listen(process.env.PORT, () => console.log(`Serveur sur port ${process.env.PORT}`));
+module.exports = app;  // Exporter l'app pour les tests
