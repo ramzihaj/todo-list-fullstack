@@ -7,14 +7,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI || process.env.MONGODB_URI)  // Fallback si local  .then(() => console.log('Connecté à MongoDB'))
-  .catch(err => console.error('Erreur MongoDB:', err));
+// Export app avant connexion (pour tests)
+module.exports = app;
+
+// Connexion MongoDB seulement si pas en test
+if (process.env.NODE_ENV !== 'test') {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('Connecté à MongoDB'))
+    .catch(err => console.error('Erreur MongoDB:', err));
+}
 
 // Schéma Tâche
 const taskSchema = new mongoose.Schema({
   text: { type: String, required: true },
   completed: { type: Boolean, default: false },
-  category: { type: String, default: 'Personnel' },  // Catégorie personnalisable
+  category: { type: String, default: 'Personnel' },
   createdAt: { type: Date, default: Date.now }
 });
 const Task = mongoose.model('Task', taskSchema);
@@ -41,5 +48,8 @@ app.delete('/tasks/:id', async (req, res) => {
   res.json({ message: 'Tâche supprimée' });
 });
 
-app.listen(process.env.PORT, () => console.log(`Serveur sur port ${process.env.PORT}`));
-module.exports = app;  // Exporter l'app pour les tests
+// Lancement serveur seulement si pas en test
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Serveur sur port ${PORT}`));
+}
