@@ -4,34 +4,29 @@ const mongoose = require('mongoose');
 // Mock mongoose global
 jest.mock('mongoose');
 
-// Mock connect (déjà bon)
-const mockConnect = jest.fn();
-mongoose.connect = mockConnect;
+// Mock connect
+mongoose.connect = jest.fn();
 
 // Mock Schema (simple)
 mongoose.Schema = jest.fn(() => ({}));
 
-// Mock model : Retourne un constructeur qui crée des instances avec save
+// Mock model : Un constructeur avec statiques attachés
 let mockTasks = [];  // "DB" in-memory
-mongoose.model = jest.fn((name, schema) => {
-  if (name === 'Task') {
-    return jest.fn((data) => ({  // Constructeur mock : new Task(data) retourne instance
-      ...data,  // Copie les données
-      save: jest.fn().mockResolvedValue(data)  // save retourne les données
-    }));
-  }
-  return jest.fn();
-});
 
-// Mock méthodes statiques sur le modèle (pour find, etc.)
-const MockTaskModel = {
-  find: jest.fn().mockResolvedValue(mockTasks),
-  findByIdAndUpdate: jest.fn().mockResolvedValue({}),
-  findByIdAndDelete: jest.fn().mockResolvedValue()
-};
-mongoose.model.mockReturnValueOnce(MockTaskModel);  // Pour le premier appel (Task)
+const MockTaskConstructor = jest.fn((data) => ({
+  ...data,
+  _id: 'mock-id',  // Ajoute un ID mock pour réalisme
+  save: jest.fn().mockResolvedValue({ ...data, _id: 'mock-id' })  // save retourne task avec ID
+}));
 
-// Import app après tous les mocks
+// Attache méthodes statiques au constructeur
+MockTaskConstructor.find = jest.fn().mockResolvedValue(mockTasks);
+MockTaskConstructor.findByIdAndUpdate = jest.fn().mockResolvedValue({ ...mockTasks[0], _id: 'mock-id' });
+MockTaskConstructor.findByIdAndDelete = jest.fn().mockResolvedValue();
+
+mongoose.model = jest.fn(() => MockTaskConstructor);  // Retourne toujours le même mock pour 'Task'
+
+// Import app après mocks
 const app = require('../server');
 
 describe('Tasks API', () => {
@@ -44,8 +39,8 @@ describe('Tasks API', () => {
   });
 
   afterEach(() => {
-    mockTasks = [];  // Reset "DB"
-    jest.clearAllMocks();  // Clear mocks pour isolation
+    mockTasks = [];
+    jest.clearAllMocks();
   });
 
   it('should get empty tasks array', async () => {
@@ -59,8 +54,9 @@ describe('Tasks API', () => {
     const newTask = { text: 'Test tâche', category: 'Travail' };
     const res = await request(app).post('/tasks').send(newTask);
     expect(res.status).toBe(200);
-    expect(res.body.text).toBe(newTask.text);  // Match input
+    expect(res.body.text).toBe(newTask.text);
     expect(res.body.category).toBe(newTask.category);
-    expect(MockTaskModel.find).toHaveBeenCalled();  // Optionnel : vérifie appel
+    expect(res.body._id).toBeDefined();  // Vérifie ID mock ajouté
+    expect(MockTaskConstructor).toHaveBeenCalledWith(newTask);  // Vérifie new Task appelé
   });
 });
