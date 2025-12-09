@@ -1,8 +1,10 @@
 pipeline {
     agent any
+    tools {
+        nodejs 'NodeJS'  // Référence l'outil configuré ; installe auto si besoin
+    }
     environment {
-        // Vars pour MongoDB (utilisez des creds Jenkins pour prod)
-        MONGODB_URI = credentials('mongodb-uri')  // Ajoutez ça dans Jenkins Credentials
+        MONGODB_URI = credentials('mongodb-uri')
     }
     stages {
         stage('Checkout') {
@@ -14,7 +16,7 @@ pipeline {
             steps {
                 dir('backend') {
                     sh 'npm install'
-                    sh 'npm test'  // Ajoutez des tests si pas déjà (voir Étape 3)
+                    sh 'npm test'  // Si tests ajoutés
                 }
             }
         }
@@ -27,24 +29,17 @@ pipeline {
             }
         }
         stage('Docker Build (Optionnel)') {
-            when { branch 'main' }  // Seulement sur main pour éviter spams
+            when { branch 'main' }
             steps {
                 script {
-                    // Multi-stage Docker : backend + frontend statique servi par Nginx
                     docker.build("mon-todo-app:${env.BUILD_ID}")
                 }
-                // Push vers Docker Hub si creds configurés
-                // withDockerRegistry([credentialsId: 'docker-hub', url: '']) {
-                //     sh "docker push mon-todo-app:${env.BUILD_ID}"
-                // }
             }
         }
     }
     post {
         always {
-            // Archive artifacts (build frontend)
             archiveArtifacts artifacts: 'frontend/build/**', allowEmptyArchive: true
-            // Notifications ou cleanup
             cleanWs()
         }
         success {
