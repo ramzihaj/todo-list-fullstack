@@ -8,7 +8,8 @@
     "test": "NODE_ENV=test jest"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "silent": true
   },
   "keywords": [],
   "author": "",

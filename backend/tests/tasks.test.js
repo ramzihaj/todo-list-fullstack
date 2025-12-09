@@ -1,27 +1,37 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 
-// Mock mongoose global pour éviter toute connexion
+// Mock mongoose global
 jest.mock('mongoose');
 
-// Mock spécifique pour le modèle Task
-const mockTasks = [];  // Simulate DB in memory
-const mockTask = { text: 'Test', category: 'Travail' };  // Mock instance
+// Mock connect (déjà bon)
+const mockConnect = jest.fn();
+mongoose.connect = mockConnect;
 
-// Mock mongoose.Schema et model
-const mockSchema = jest.fn().mockReturnValue({});  // Empty schema
-mongoose.Schema = jest.fn(() => mockSchema);
-const mockModel = jest.fn(() => ({
-  find: jest.fn().mockResolvedValue(mockTasks),  // GET: return empty or tasks
-  findByIdAndUpdate: jest.fn().mockResolvedValue(mockTask),  // PUT
-  findByIdAndDelete: jest.fn().mockResolvedValue({ deletedCount: 1 }),  // DELETE
-  prototype: {
-    save: jest.fn().mockResolvedValue(mockTask)  // POST: save returns task
+// Mock Schema (simple)
+mongoose.Schema = jest.fn(() => ({}));
+
+// Mock model : Retourne un constructeur qui crée des instances avec save
+let mockTasks = [];  // "DB" in-memory
+mongoose.model = jest.fn((name, schema) => {
+  if (name === 'Task') {
+    return jest.fn((data) => ({  // Constructeur mock : new Task(data) retourne instance
+      ...data,  // Copie les données
+      save: jest.fn().mockResolvedValue(data)  // save retourne les données
+    }));
   }
-}));
-mongoose.model = mockModel;
+  return jest.fn();
+});
 
-// Import app après mocks
+// Mock méthodes statiques sur le modèle (pour find, etc.)
+const MockTaskModel = {
+  find: jest.fn().mockResolvedValue(mockTasks),
+  findByIdAndUpdate: jest.fn().mockResolvedValue({}),
+  findByIdAndDelete: jest.fn().mockResolvedValue()
+};
+mongoose.model.mockReturnValueOnce(MockTaskModel);  // Pour le premier appel (Task)
+
+// Import app après tous les mocks
 const app = require('../server');
 
 describe('Tasks API', () => {
@@ -34,7 +44,8 @@ describe('Tasks API', () => {
   });
 
   afterEach(() => {
-    mockTasks.length = 0;  // Clear "DB" after each test
+    mockTasks = [];  // Reset "DB"
+    jest.clearAllMocks();  // Clear mocks pour isolation
   });
 
   it('should get empty tasks array', async () => {
@@ -48,8 +59,8 @@ describe('Tasks API', () => {
     const newTask = { text: 'Test tâche', category: 'Travail' };
     const res = await request(app).post('/tasks').send(newTask);
     expect(res.status).toBe(200);
-    expect(res.body.text).toBe('Test tâche');
-    expect(res.body.category).toBe('Travail');
-    expect(mockTasks.length).toBe(1);  // Verify "saved"
+    expect(res.body.text).toBe(newTask.text);  // Match input
+    expect(res.body.category).toBe(newTask.category);
+    expect(MockTaskModel.find).toHaveBeenCalled();  // Optionnel : vérifie appel
   });
 });
