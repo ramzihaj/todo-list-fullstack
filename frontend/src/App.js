@@ -14,7 +14,7 @@ function App() {
   }, [theme]);
 
   const fetchTasks = async () => {
-    const res = await axios.get('http://localhost:5000/tasks');
+    const res = await axios.get('/api/tasks');
     setTasks(res.data);
   };
 
