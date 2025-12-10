@@ -42,7 +42,7 @@ pipeline {
     always {
         archiveArtifacts artifacts: 'frontend/build/**', allowEmptyArchive: true
         cleanWs()
-        // Cleanup image Docker avec interpolation Groovy
+       
         sh "docker rmi ramzihaj/todo-app:${env.BUILD_ID} || true"
     }
     success {
