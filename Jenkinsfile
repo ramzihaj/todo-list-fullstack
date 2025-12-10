@@ -28,7 +28,7 @@ pipeline {
                 }
             }
         }
-        stage('Docker Build') {  # Retirez "(Optionnel)" si toujours actif
+        stage('Docker Build') { 
     when { branch 'main' }
     steps {
         script {
