@@ -39,17 +39,17 @@ pipeline {
         }
     }
     post {
-        always {
-            archiveArtifacts artifacts: 'frontend/build/**', allowEmptyArchive: true
-            cleanWs()
-            // Cleanup image Docker locale
-            sh 'docker rmi ramzihaj/todo-app:${env.BUILD_ID} || true'
-        }
-        success {
-            echo 'Build réussi ! App prête pour déploiement.'
-        }
-        failure {
-            echo 'Build échoué. Vérifiez les logs.'
-        }
+    always {
+        archiveArtifacts artifacts: 'frontend/build/**', allowEmptyArchive: true
+        cleanWs()
+        // Cleanup image Docker avec interpolation Groovy
+        sh "docker rmi ramzihaj/todo-app:${env.BUILD_ID} || true"
     }
+    success {
+        echo 'Build réussi ! App prête pour déploiement.'
+    }
+    failure {
+        echo 'Build échoué. Vérifiez les logs.'
+    }
+}
 }
