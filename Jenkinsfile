@@ -28,14 +28,25 @@ pipeline {
                 }
             }
         }
-        stage('Docker Build (Optionnel)') {
-            when { branch 'main' }
-            steps {
-                script {
-                    docker.build("mon-todo-app:${env.BUILD_ID}")
-                }
+        stage('Docker Build') {  # Retirez "(Optionnel)" si toujours actif
+    when { branch 'main' }
+    steps {
+        script {
+            def app = docker.build("ramzihaj/todo-app:${env.BUILD_ID}")  // Tag avec votre username
+            // Push vers Docker Hub (optionnel)
+            docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
+                app.push("${env.BUILD_ID}")
+                app.push('latest')
             }
         }
+    }
+}
+post {
+    always {
+        // Cleanup image locale
+        sh 'docker rmi ramzihaj/todo-app:${env.BUILD_ID} || true'
+    }
+}
     }
     post {
         always {
